@@ -32,6 +32,8 @@ import {
 const WIDGET_KEY = "gentle-todo";
 const STATUS_ENUM = ["pending", "in_progress", "blocked", "done", "dropped"];
 const COLLAPSE_KEY_DEFAULT = "ctrl+shift+t";
+const SCROLL_UP_KEY_DEFAULT = "alt+shift+up";
+const SCROLL_DOWN_KEY_DEFAULT = "alt+shift+down";
 const REMIND_AFTER_TOOL_TURNS = 4;
 const TODO_REMINDER = "The todo plan has not been reviewed during several tool-use turns. Check whether it still matches the work performed and update tasks where needed. Do not mark work done without verification.";
 const TOOL_PARAMETERS = {
@@ -74,6 +76,14 @@ export function todoCollapseKey(env: NodeJS.ProcessEnv = process.env): string | 
 	return value === "" || value.toLowerCase() === "off" ? undefined : value;
 }
 
+export function todoScrollKeys(env: NodeJS.ProcessEnv = process.env): { up: string | undefined; down: string | undefined } {
+	const upVal = env.GENTLE_PI_TODO_SCROLL_UP_KEY?.trim();
+	const downVal = env.GENTLE_PI_TODO_SCROLL_DOWN_KEY?.trim();
+	const up = upVal === undefined ? SCROLL_UP_KEY_DEFAULT : (upVal === "" || upVal.toLowerCase() === "off" ? undefined : upVal);
+	const down = downVal === undefined ? SCROLL_DOWN_KEY_DEFAULT : (downVal === "" || downVal.toLowerCase() === "off" ? undefined : downVal);
+	return { up, down };
+}
+
 interface TodoSession {
 	state: TodoState;
 	turn: number;
@@ -99,6 +109,7 @@ export default function gentleTodo(pi: ExtensionAPI, env: NodeJS.ProcessEnv = pr
 	if (!todoEnabled(env)) return;
 	const sessions = new Map<string, TodoSession>();
 	const collapseKey = todoCollapseKey(env);
+	const scrollKeys = todoScrollKeys(env);
 
 	const session = (ctx: ExtensionContext): TodoSession => {
 		const key = sessionKey(ctx);
@@ -159,7 +170,8 @@ export default function gentleTodo(pi: ExtensionAPI, env: NodeJS.ProcessEnv = pr
 				scroll.updateLayout(body.length, current.collapsed ? body.length : room, () => current.host?.requestRender());
 				const visible = scroll.render(width).slice(scroll.scrollTop, scroll.scrollTop + scroll.viewportHeight);
 				const output = [...lines.slice(0, bodyStart), ...visible, ...lines.slice(-1)];
-				if (overflow) output.push(theme.fg("muted", truncateToWidth(`↑↓ ${scroll.scrollTop + 1}–${scroll.scrollTop + visible.length}/${body.length} · ctrl+shift+↑/↓`, width)));
+				const hintKey = scrollKeys.up ? (scrollKeys.up === SCROLL_UP_KEY_DEFAULT ? "alt+shift+↑/↓" : `${scrollKeys.up}/${scrollKeys.down ?? "off"}`) : undefined;
+				if (overflow) output.push(theme.fg("muted", truncateToWidth(`↑↓ ${scroll.scrollTop + 1}–${scroll.scrollTop + visible.length}/${body.length}${hintKey ? ` · ${hintKey}` : ""}`, width)));
 				return spacer && output.length > 0 ? [...output, ""] : output;
 			},
 			invalidate() {
@@ -281,11 +293,13 @@ export default function gentleTodo(pi: ExtensionAPI, env: NodeJS.ProcessEnv = pr
 		});
 	}
 
-	for (const [key, lines] of [["ctrl+shift+up", -3], ["ctrl+shift+down", 3]] as const) {
-		pi.registerShortcut(key, {
-			description: `Scroll the Todo list ${lines < 0 ? "up" : "down"}`,
-			handler: async (ctx) => session(ctx).scrollTodo?.(lines),
-		});
+	for (const [key, lines] of [[scrollKeys.up, -3], [scrollKeys.down, 3]] as const) {
+		if (key) {
+			pi.registerShortcut(key as Parameters<ExtensionAPI["registerShortcut"]>[0], {
+				description: `Scroll the Todo list ${lines < 0 ? "up" : "down"}`,
+				handler: async (ctx) => session(ctx).scrollTodo?.(lines),
+			});
+		}
 	}
 
 	pi.on("session_start", (_event, ctx) => {

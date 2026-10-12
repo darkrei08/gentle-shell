@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test, { after, before } from "node:test";
 import { convertToLlm, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { Component, TUI } from "@earendil-works/pi-tui";
-import gentleTodo, { todoCollapseKey, todoEnabled } from "../extensions/gentle-todo.ts";
+import gentleTodo, { todoCollapseKey, todoEnabled, todoScrollKeys } from "../extensions/gentle-todo.ts";
 import { CARD_STYLE, cardStyle, setCardStyle } from "../lib/shell-card.ts";
 import { stripAnsi } from "../lib/terminal-theme.ts";
 import { sidebarState } from "../lib/shell-sidebar.ts";
@@ -114,7 +114,7 @@ test("long Todo widgets stay bounded, scroll, resize and keep their collapse con
 		assert.equal((result.details.gentleTodo as { tasks: { title: string; note: string }[] }).tasks[0].title, title.trim());
 		assert.equal((result.details.gentleTodo as { tasks: { title: string; note: string }[] }).tasks[0].note, note.trim());
 		await shortcuts.get("ctrl+shift+t")!.handler(ctx);
-		await shortcuts.get("ctrl+shift+down")!.handler(ctx);
+		await shortcuts.get("alt+shift+down")!.handler(ctx);
 		assert.notDeepEqual(bottom.render(40), collapsed, "keyboard scrolling is available without mouse");
 	}
 	t.after(() => setCardStyle(CARD_STYLE.NEON));
@@ -146,11 +146,11 @@ test("Todo keyboard scrolling targets the visible card after a cached sidebar br
 			bottom.render(40);
 			tui.terminal.columns = 160;
 			const before = railLines();
-			await shortcuts.get("ctrl+shift+down")!.handler(ctx);
+			await shortcuts.get("alt+shift+down")!.handler(ctx);
 			const after = railLines();
 			assert.notDeepEqual(after, before, "DOWN changes the visible cached rail, not the hidden bottom widget");
 			assert.match(after.join("\n"), /↑↓ 4–/);
-			await shortcuts.get("ctrl+shift+up")!.handler(ctx);
+			await shortcuts.get("alt+shift+up")!.handler(ctx);
 			assert.deepEqual(railLines(), before, "UP restores the expanded viewport");
 		} finally {
 			dispose();
@@ -166,6 +166,8 @@ test("todoEnabled and todoCollapseKey read their environment flags", () => {
 	assert.equal(todoCollapseKey({}), "ctrl+shift+t");
 	assert.equal(todoCollapseKey({ GENTLE_PI_TODO_KEY: "alt+t" }), "alt+t");
 	assert.equal(todoCollapseKey({ GENTLE_PI_TODO_KEY: "off" }), undefined);
+	assert.deepEqual(todoScrollKeys({}), { up: "alt+shift+up", down: "alt+shift+down" });
+	assert.deepEqual(todoScrollKeys({ GENTLE_PI_TODO_SCROLL_UP_KEY: "ctrl+up", GENTLE_PI_TODO_SCROLL_DOWN_KEY: "off" }), { up: "ctrl+up", down: undefined });
 	const off = fakePi();
 	gentleTodo(off.pi, { GENTLE_PI_TODO: "off" });
 	assert.equal(off.tools.size, 0);
