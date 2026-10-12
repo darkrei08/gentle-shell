@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test, { after, before } from "node:test";
 import { convertToLlm, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { Component, TUI } from "@earendil-works/pi-tui";
-import gentleTodo, { todoCollapseKey, todoEnabled } from "../extensions/gentle-todo.ts";
+import gentleTodo, { todoCollapseKey, todoEnabled, todoScrollKeys } from "../extensions/gentle-todo.ts";
 import { TODO_PROGRESS_EVENT } from "../lib/shell-todo.ts";
 import { CARD_STYLE, cardStyle, setCardStyle } from "../lib/shell-card.ts";
 import { stripAnsi } from "../lib/terminal-theme.ts";
@@ -183,6 +183,8 @@ test("todoEnabled and todoCollapseKey read their environment flags", () => {
 	assert.equal(todoCollapseKey({}), "ctrl+shift+t");
 	assert.equal(todoCollapseKey({ GENTLE_PI_TODO_KEY: "alt+t" }), "alt+t");
 	assert.equal(todoCollapseKey({ GENTLE_PI_TODO_KEY: "off" }), undefined);
+	assert.deepEqual(todoScrollKeys({}), { up: "alt+shift+up", down: "alt+shift+down" });
+	assert.deepEqual(todoScrollKeys({ GENTLE_PI_TODO_SCROLL_UP_KEY: "ctrl+up", GENTLE_PI_TODO_SCROLL_DOWN_KEY: "off" }), { up: "ctrl+up", down: undefined });
 	const off = fakePi();
 	gentleTodo(off.pi, { GENTLE_PI_TODO: "off" });
 	assert.equal(off.tools.size, 0);
