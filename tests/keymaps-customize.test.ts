@@ -50,7 +50,8 @@ test("every action and palette command has a Keymaps row with its current key, p
 	assert.deepEqual(rows.map(label), [
 		"Command palette: alt+k", "Browse changes: alt+g", "Subscription usage: alt+u", "Cycle visual preset: alt+l",
 		"Subagents overlay: alt+w (GENTLE_PI_AGENTS_VIEW_KEY)", "Stop active subagents: alt+s", "Collapse the agents card: ctrl+shift+a",
-		"Collapse the jobs card: ctrl+shift+j", "Collapse the todo list: ctrl+shift+t", "Usage stats: none",
+		"Collapse the jobs card: ctrl+shift+j", "Collapse the todo list: ctrl+shift+t",
+		"Scroll the todo list up: alt+shift+up", "Scroll the todo list down: alt+shift+down", "Usage stats: none",
 		"/gentle:design · Design · HTML artboards: none", "Reload now to apply keymap changes",
 	]);
 });
